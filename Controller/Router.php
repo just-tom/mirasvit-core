@@ -9,8 +9,8 @@
  *
  * @category  Mirasvit
  * @package   mirasvit/module-core
- * @version   1.2.60
- * @copyright Copyright (C) 2018 Mirasvit (https://mirasvit.com/)
+ * @version   1.2.4
+ * @copyright Copyright (C) 2017 Mirasvit (https://mirasvit.com/)
  */
 
 
@@ -18,7 +18,6 @@ namespace Mirasvit\Core\Controller;
 
 use Magento\Framework\App\ActionFactory;
 use Magento\Framework\App\RequestInterface;
-use Magento\Framework\App\ResponseInterface;
 use Magento\Framework\App\RouterInterface;
 use Magento\Framework\DataObject;
 use Magento\Framework\Event\ManagerInterface as EventManagerInterface;
@@ -48,18 +47,15 @@ class Router implements RouterInterface
      *
      * @param ActionFactory             $actionFactory
      * @param EventManagerInterface     $eventManager
-     * @param ResponseInterface         $response
      * @param UrlRewriteHelperInterface $urlRewrite
      */
     public function __construct(
         ActionFactory $actionFactory,
         EventManagerInterface $eventManager,
-        ResponseInterface $response,
         UrlRewriteHelperInterface $urlRewrite
     ) {
         $this->actionFactory = $actionFactory;
         $this->eventManager = $eventManager;
-        $this->response = $response;
         $this->urlRewrite = $urlRewrite;
     }
 
@@ -85,12 +81,6 @@ class Router implements RouterInterface
         $result = $this->urlRewrite->match($pathInfo);
 
         if ($result) {
-            if ($result->getData('forwardUrl')) {
-                $this->response->setRedirect($result->getData('forwardUrl'));
-                $request->setDispatched(true);
-                return $this->actionFactory->create('Magento\Framework\App\Action\Redirect');
-            }
-
             $params = [];
             if ($result->getEntityId()) {
                 $params['id'] = $result->getEntityId();

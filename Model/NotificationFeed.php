@@ -9,8 +9,8 @@
  *
  * @category  Mirasvit
  * @package   mirasvit/module-core
- * @version   1.2.60
- * @copyright Copyright (C) 2018 Mirasvit (https://mirasvit.com/)
+ * @version   1.2.4
+ * @copyright Copyright (C) 2017 Mirasvit (https://mirasvit.com/)
  */
 
 
@@ -19,7 +19,7 @@ namespace Mirasvit\Core\Model;
 
 use Magento\AdminNotification\Model\Feed;
 
-class NotificationFeed extends Feed
+final class NotificationFeed extends Feed
 {
     /**
      * @var string

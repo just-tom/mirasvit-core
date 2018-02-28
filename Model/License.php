@@ -9,8 +9,8 @@
  *
  * @category  Mirasvit
  * @package   mirasvit/module-core
- * @version   1.2.60
- * @copyright Copyright (C) 2018 Mirasvit (https://mirasvit.com/)
+ * @version   1.2.4
+ * @copyright Copyright (C) 2017 Mirasvit (https://mirasvit.com/)
  */
 
 
@@ -21,15 +21,8 @@ use Magento\Framework\FlagFactory;
 use Magento\Framework\HTTP\Adapter\CurlFactory;
 use Magento\Framework\Module\ModuleListInterface;
 use Magento\Framework\UrlInterface;
-use Magento\Framework\App\ProductMetadata;
-use Magento\Framework\App\DeploymentConfig;
-use Magento\Framework\Config\ConfigOptionsListConstants;
-use Magento\Framework\Module\Dir\Reader as DirReader;
 
-/**
- * @SuppressWarnings(PHPMD)
- */
-class License
+final class License
 {
     const EDITION_EE = 'EE';
     const EDITION_CE = 'CE';
@@ -41,161 +34,56 @@ class License
     /**
      * @var UrlInterface
      */
-    private $urlManager;
+    protected $urlManager;
 
     /**
      * @var ModuleListInterface
      */
-    private $moduleList;
+    protected $moduleList;
 
     /**
      * @var CurlFactory
      */
-    private $curlFactory;
+    protected $curlFactory;
 
     /**
      * @var FlagFactory
      */
-    private $flagFactory;
+    protected $flagFactory;
 
     /**
-     * @var ProductMetadata
+     * Constructor
+     *
+     * @param UrlInterface        $urlManager
+     * @param ModuleListInterface $moduleList
+     * @param CurlFactory         $curlFactory
+     * @param FlagFactory         $flagFactory
      */
-    private $productMetadata;
-
-    /**
-     * @var DeploymentConfig
-     */
-    private $deploymentConfig;
-
-    /**
-     * @var DirReader
-     */
-    private $dirReader;
-
-    /**
-     * @var string
-     */
-    private $license;
-
-    /**
-     * @var string
-     */
-    private $key;
-
     public function __construct(
         UrlInterface $urlManager,
         ModuleListInterface $moduleList,
         CurlFactory $curlFactory,
-        FlagFactory $flagFactory,
-        ProductMetadata $productMetadata,
-        DeploymentConfig $deploymentConfig,
-        DirReader $dirReader
+        FlagFactory $flagFactory
     ) {
         $this->urlManager = $urlManager;
         $this->moduleList = $moduleList;
         $this->curlFactory = $curlFactory;
         $this->flagFactory = $flagFactory;
-        $this->productMetadata = $productMetadata;
-        $this->deploymentConfig = $deploymentConfig;
-        $this->dirReader = $dirReader;
-    }
-
-    /**
-     * @param string $className
-     * @return bool|string
-     */
-    public function load($className = '')
-    {
-        $module = $this->getModuleByClass($className);
-
-        if ($module == 'Mirasvit_Blog' || $module == 'Mirasvit_Demo' || $module == 'Mirasvit_Profiler') {
-            return true;
-        }
-
-        $moduleDir = $this->getModuleDirByClass($className);
-        if (!$moduleDir) {
-            return true;
-        }
-
-        if (file_exists("$moduleDir/license")) {
-            $license = explode(":", @file_get_contents("$moduleDir/license"));
-            if (count($license) == 2) {
-                $this->license = $license[0];
-                $this->key = $license[1];
-
-                return $this->license;
-            }
-        }
-
-        return false;
     }
 
     /**
      * License status
      *
-     * @param string $className
-     *
-     * @return true|string
+     * @return string
      */
-    public function getStatus($className = '')
+    public function getStatus()
     {
-        if ($this->load($className) === true) {
-            return true;
-        }
-
-        if (strpos($this->getDomain(), 'mirasvit.com') > 0) {
-            return true;
-        }
-
-        if (!$this->license) {
-            return "License not found";
-        }
-
-        if ($this->isNeedUpdate()) {
+        $data = $this->getFlagData();
+        if (!$data) {
             $this->request();
-            $data = $this->getFlagData($this->license);
-
-            if (isset($data['status']) && $data['status'] === self::STATUS_ACTIVE) {
-                return true;
-            }
-            if (isset($data['message'])) {
-                return $data['message'];
-            }
         }
 
-        return true;
-    }
-
-    /**
-     * @param string $className
-     * @return false|string
-     */
-    private function getModuleDirByClass($className)
-    {
-        $module = $this->getModuleByClass($className);
-
-        if ($module) {
-            return $this->dirReader->getModuleDir("", $module);
-        }
-
-        return false;
-    }
-
-    /**
-     * @param string $className
-     * @return false|string
-     */
-    private function getModuleByClass($className)
-    {
-        $class = explode('\\', $className);
-        if (isset($class[1])) {
-            $module = 'Mirasvit_' . $class[1];
-
-            return $module;
-        }
-
-        return false;
+        return self::STATUS_ACTIVE;
     }
 
     /**
@@ -203,7 +91,7 @@ class License
      *
      * @return $this
      */
-    private function request()
+    public function request()
     {
         $params = [];
         $params['v'] = 3;
@@ -211,84 +99,27 @@ class License
         $params['ip'] = $this->getIP();
         $params['mv'] = $this->getVersion();
         $params['me'] = $this->getEdition();
-        $params['l'] = $this->license;
-        $params['k'] = $this->key;
-        $params['uid'] = $this->getUID();
+        $params['l'] = 1;
+        $params['k'] = 0;
+        $params['uid'] = 0;
 
-        $result = $this->sendRequest('https://lc.mirasvit.com/lc/check/', $params);
+        $result = $this->sendRequest('http://mirasvit.com/lc/check/', $params);
 
         $result['time'] = time();
-        $this->saveFlagData($this->license, $result);
+        $this->saveFlagData($result);
 
         return $this;
     }
 
     /**
-     * @return string
-     */
-    public function getRequestUrl()
-    {
-        $params = [];
-        $params['v'] = 3;
-        $params['d'] = $this->getDomain();
-        $params['ip'] = $this->getIP();
-        $params['mv'] = $this->getVersion();
-        $params['me'] = $this->getEdition();
-        $params['l'] = $this->license;
-        $params['k'] = $this->key;
-        $params['uid'] = $this->getUID();
-
-        $query = http_build_query($params);
-
-        return 'https://lc.mirasvit.com/lc/check/?' . $query;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isNeedUpdate()
-    {
-        $data = $this->getFlagData($this->license);
-
-        if (!$data) {
-            return true;
-        }
-
-        if ($data && isset($data['status'])) {
-            if ($data['status'] === self::STATUS_ACTIVE) {
-                if (abs(time() - $data['time']) > 24 * 60 * 60) {
-                    return true;
-                }
-            } else {
-                return true;
-            }
-        }
-
-        if ($data && !isset($data['status'])) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @return string
-     */
-    public function getLicense()
-    {
-        return $this->license;
-    }
-
-    /**
      * Save request result to flag
      *
-     * @param string $license
      * @param array $data
      * @return $this
      */
-    private function saveFlagData($license, $data)
+    protected function saveFlagData($data)
     {
-        $flag = $this->flagFactory->create(['data' => ['flag_code' => "m" . $license]])
+        $flag = $this->flagFactory->create(['data' => ['flag_code' => 'core']])
             ->loadSelf();
 
         $flag->setFlagData(base64_encode(serialize($data)))
@@ -300,12 +131,11 @@ class License
     /**
      * Return last request result
      *
-     * @param string $license
      * @return array
      */
-    private function getFlagData($license)
+    protected function getFlagData()
     {
-        $flag = $this->flagFactory->create(['data' => ['flag_code' => "m" . $license]])
+        $flag = $this->flagFactory->create(['data' => ['flag_code' => 'core']])
             ->loadSelf();
 
         if ($flag->getFlagData()) {
@@ -320,26 +150,13 @@ class License
     }
 
     /**
-     * Remove flag data
-     *
-     * @return void
-     */
-    public function clear()
-    {
-        $flag = $this->flagFactory->create(['data' => ['flag_code' => "m" . $this->license]])
-            ->loadSelf();
-
-        $flag->delete();
-    }
-
-    /**
      * Send http request
      *
      * @param string $endpoint
-     * @param array $params
+     * @param array  $params
      * @return array
      */
-    private function sendRequest($endpoint, $params)
+    public function sendRequest($endpoint, $params)
     {
         $curl = $this->curlFactory->create();
         $config = ['timeout' => 10];
@@ -371,7 +188,7 @@ class License
      *
      * @return string
      */
-    private function getDomain()
+    public function getDomain()
     {
         return $this->urlManager->getCurrentUrl();
     }
@@ -381,7 +198,7 @@ class License
      *
      * @return string|bool
      */
-    private function getIP()
+    public function getIP()
     {
         return array_key_exists('SERVER_ADDR', $_SERVER)
             ? $_SERVER['SERVER_ADDR']
@@ -393,13 +210,9 @@ class License
      *
      * @return string
      */
-    private function getEdition()
+    public function getEdition()
     {
-        if ($this->moduleList->has('Magento_Enterprise') || $this->moduleList->has('Magento_CustomerSegment')) {
-            return 'EE';
-        }
-
-        return 'CE';
+        return self::EDITION_CE;
     }
 
     /**
@@ -407,25 +220,14 @@ class License
      *
      * @return string
      */
-    private function getVersion()
+    public function getVersion()
     {
-        return $this->productMetadata->getVersion();
+        $module = $this->moduleList->getOne('Magento_Backend');
+        if (is_array($module) && isset($module['setup_version'])) {
+            return $module['setup_version'];
+        }
+
+        return '2.0.0';
     }
 
-    /**
-     * Unique installation key
-     *
-     * @return string
-     */
-    private function getUID()
-    {
-        $db = $this->deploymentConfig->get(
-            ConfigOptionsListConstants::CONFIG_PATH_DB_CONNECTION_DEFAULT
-            . '/' . ConfigOptionsListConstants::KEY_NAME);
-        $host = $this->deploymentConfig->get(
-            ConfigOptionsListConstants::CONFIG_PATH_DB_CONNECTION_DEFAULT
-            . '/' . ConfigOptionsListConstants::KEY_HOST);
-
-        return md5($db . $host);
-    }
 }

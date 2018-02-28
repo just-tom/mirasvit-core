@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
     <default>
+        <mirasvit>
+            <core>
+                <enabled>1</enabled>
+            </core>
+        </mirasvit>
         <core>
-            <css>
-                <include_font_awesome>1</include_font_awesome>
-            </css>
             <logger>
                 <developer_ip>80.78.40.163</developer_ip>
             </logger>
-            <feedback>
-                <is_active>1</is_active>
-            </feedback>
         </core>
     </default>
 </config>

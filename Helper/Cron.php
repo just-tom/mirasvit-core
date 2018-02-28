@@ -9,8 +9,8 @@
  *
  * @category  Mirasvit
  * @package   mirasvit/module-core
- * @version   1.2.60
- * @copyright Copyright (C) 2018 Mirasvit (https://mirasvit.com/)
+ * @version   1.2.4
+ * @copyright Copyright (C) 2017 Mirasvit (https://mirasvit.com/)
  */
 
 
@@ -21,8 +21,8 @@ use Magento\Cron\Model\ResourceModel\Schedule\CollectionFactory as ScheduleColle
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
 use Magento\Framework\Message\ManagerInterface as MessageManagerInterface;
+use Magento\Framework\Stdlib\DateTime\TimezoneInterface;
 use Mirasvit\Core\Api\CronHelperInterface;
-use Magento\Framework\Stdlib\DateTime\DateTime;
 
 class Cron extends AbstractHelper implements CronHelperInterface
 {
@@ -32,9 +32,9 @@ class Cron extends AbstractHelper implements CronHelperInterface
     protected $scheduleCollectionFactory;
 
     /**
-     * @var DateTime
+     * @var TimezoneInterface
      */
-    protected $dateTime;
+    protected $timezone;
 
     /**
      * @var MessageManagerInterface
@@ -45,18 +45,18 @@ class Cron extends AbstractHelper implements CronHelperInterface
      * Cron constructor
      *
      * @param ScheduleCollectionFactory $scheduleCollectionFactory
-     * @param DateTime                  $dateTime
+     * @param TimezoneInterface         $timezone
      * @param MessageManagerInterface   $messageManager
      * @param Context                   $context
      */
     public function __construct(
         ScheduleCollectionFactory $scheduleCollectionFactory,
-        DateTime $dateTime,
+        TimezoneInterface $timezone,
         MessageManagerInterface $messageManager,
         Context $context
     ) {
         $this->scheduleCollectionFactory = $scheduleCollectionFactory;
-        $this->dateTime = $dateTime;
+        $this->timezone = $timezone;
         $this->messageManager = $messageManager;
 
         parent::__construct($context);
@@ -122,7 +122,7 @@ class Cron extends AbstractHelper implements CronHelperInterface
         }
 
         $jobTimestamp = strtotime($job->getExecutedAt()); //in store timezone
-        $timestamp = strtotime($this->dateTime->gmtDate());  //in store timezone
+        $timestamp = $this->timezone->scopeTimeStamp();  //in store timezone
 
         if (abs($timestamp - $jobTimestamp) > 6 * 60 * 60) {
             return false;
